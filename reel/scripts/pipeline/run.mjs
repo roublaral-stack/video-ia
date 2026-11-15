@@ -8,12 +8,15 @@ import {projectSchema,buildTimeline,parseSrt,templates} from '../../src/generato
 import {loadConfig,sha,splitScript,defaultScript} from './config.mjs';
 import {digest,json,readJson,fingerprints,intact,lock} from './store.mjs';
 import {demoSpeech,chatterboxSpeech,assembleSpeech,importedSpeech,toSrt,pcm} from './speech.mjs';
+import {configuredGroups,provisionalCaptions,validateGroups} from './script-captions.mjs';
 export const runsRoot=path.join(root,'pipeline-runs');
 export const steps=['plan','media','voice','captions','scenes','render','verify','archive'];
 async function sourceFiles(dir){const result=[];for(const e of await readdir(dir,{withFileTypes:true})){const file=path.join(dir,e.name);if(e.isDirectory())result.push(...await sourceFiles(file));else if(/\.(mjs|py|tsx?|json)$/.test(e.name))result.push(file);}return result;}
 export async function identify(configFile){
  const config=await loadConfig(configFile);
  const inputs=[...config.media,...config.brag.files,...['audio','srt','referenceAudio'].map(k=>config.narration[k]).filter(Boolean)];
+ if(config.music)inputs.push(config.music.audio);
+ if(config.subtitles.srt)inputs.push(config.subtitles.srt);
  if(config.narration.alignment.model){const model=config.narration.alignment.model;inputs.push(path.join(model,'dictionary.dict'));for(const e of await readdir(path.join(model,'acoustic_model'),{withFileTypes:true})){if(e.isFile())inputs.push(path.join(model,'acoustic_model',e.name));}for(const name of ['custom.dict','provenance.json']){try{await stat(path.join(model,name));inputs.push(path.join(model,name));}catch(e){if(e.code!=='ENOENT')throw e;}}}
  if(config.narration.modelDirectory){for(const name of ['ve.pt','s3gen.pt','t3_mtl23ls_v3.safetensors','grapheme_mtl_merged_expanded_v1.json'])inputs.push(path.join(config.narration.modelDirectory,name));}
  const inputHashes=await fingerprints(inputs);
@@ -30,30 +33,44 @@ function energy(data,start=0,end=data.length/96000){
 }
 function onset(data){for(let t=0;t<data.length/96000;t+=.01)if(energy(data,t,t+.02)>.0003)return t;return null;}
 export async function verifyProduction(dir,duration,{kind='final',width=1080,height=1920}={}){
- const file=path.join(dir,kind+'.mp4'),meta=await probe(file);const v=meta.streams.find(s=>s.codec_type==='video'),a=meta.streams.find(s=>s.codec_type==='audio');
- if(!v||v.codec_name!=='h264'||v.width!==width||v.height!==height||v.r_frame_rate!=='30/1'||Number(v.nb_frames)!==duration*30||Math.abs(Number(v.duration)-duration)>.001||!a||a.codec_name!=='aac'||Math.abs(Number(meta.format.duration)-duration)>.05)throw new Error('ffprobe : format, durée, audio ou nombre d’images incorrect.');
- await command('ffmpeg',['-v','error','-i',file,'-f','null','-']);const decoded=path.join(dir,kind==='final'?'decoded-audio.wav':'preview-decoded-audio.wav');await command('ffmpeg',['-v','error','-y','-i',file,'-vn','-ar','48000','-ac','1','-c:a','pcm_s16le',decoded]);
- const original=pcm(await readFile(path.join(dir,'voice/narration.wav'))),rendered=pcm(await readFile(decoded));const captions=parseSrt(await readFile(path.join(dir,'captions.srt'),'utf8'));const sourceOnset=onset(original),renderOnset=onset(rendered);
- if(sourceOnset===null||renderOnset===null||Math.abs(sourceOnset-renderOnset)>.1||energy(rendered)<.0001)throw new Error('Audio silencieux ou décalé dans le MP4.');
- for(const c of captions)if(c.end>duration||energy(original,c.start,c.end)<.0001)throw new Error('Un sous-titre est hors audio ou couvre uniquement du silence.');
- const project=projectSchema.parse(await readJson(path.join(dir,'project.json')));if(JSON.stringify(project.captions)!==JSON.stringify(captions))throw new Error('Les sous-titres du montage diffèrent du SRT.');
- const voice=await readJson(path.join(dir,'voice/result.json'));let sourceIntegrity;
- if(voice.engine==='files'){
-  if(await digest(voice.originalFile)!==voice.inputSha256)throw new Error('Le WAV source a changé depuis son import.');
-  await command(path.join(root,'.venv/bin/python'),[path.join(root,'scripts/verify-original-audio.py'),voice.originalFile,path.join(dir,'voice/narration.wav'),decoded,path.join(dir,kind==='final'?'voice-integrity.json':'preview-voice-integrity.json')]);
-  sourceIntegrity=await readJson(path.join(dir,kind==='final'?'voice-integrity.json':'preview-voice-integrity.json'));
+ const file=path.join(dir,kind+'.mp4'),meta=await probe(file);
+ const v=meta.streams.find(s=>s.codec_type==='video'),a=meta.streams.find(s=>s.codec_type==='audio');
+ const project=projectSchema.parse(await readJson(path.join(dir,'project.json')));
+ const voice=await readJson(path.join(dir,'voice/result.json'));
+ if(!v||v.codec_name!=='h264'||v.width!==width||v.height!==height||v.r_frame_rate!=='30/1'||Number(v.nb_frames)!==Math.round(duration*30)||Math.abs(Number(v.duration)-duration)>.001||Math.abs(Number(meta.format.duration)-duration)>.08)throw new Error('ffprobe : format, durée ou nombre d’images incorrect.');
+ if(project.audio?(!a||a.codec_name!=='aac'):Boolean(a))throw new Error('ffprobe : piste audio absente ou inattendue dans cet aperçu.');
+ await command('ffmpeg',['-v','error','-i',file,'-f','null','-']);
+ const captions=parseSrt(await readFile(path.join(dir,'captions.srt'),'utf8'));
+ if(JSON.stringify(project.captions)!==JSON.stringify(captions))throw new Error('Les sous-titres du montage diffèrent du SRT.');
+ let sourceIntegrity,sourceOnset=null,renderOnset=null,audioRms=null;
+ if(a){
+  const decoded=path.join(dir,kind==='final'?'decoded-audio.wav':'preview-decoded-audio.wav');
+  await command('ffmpeg',['-v','error','-y','-i',file,'-vn','-ar','48000','-ac','1','-c:a','pcm_s16le',decoded]);
+  const rendered=pcm(await readFile(decoded));renderOnset=onset(rendered);audioRms=energy(rendered);
+  if(renderOnset===null||audioRms<.0001)throw new Error('Piste audio silencieuse dans le MP4.');
+  if(voice.engine!=='none'){
+   const original=pcm(await readFile(path.join(dir,'voice/narration.wav')));sourceOnset=onset(original);
+   if(sourceOnset===null||Math.abs(sourceOnset-renderOnset)>.1)throw new Error('Audio silencieux ou décalé dans le MP4.');
+   for(const cue of captions)if(cue.end>duration||energy(original,cue.start,cue.end)<.0001)throw new Error('Un sous-titre est hors audio ou couvre uniquement du silence.');
+   if(voice.engine==='files'){
+    if(await digest(voice.originalFile)!==voice.inputSha256)throw new Error('Le fichier vocal source a changé depuis son import.');
+    const integrity=path.join(dir,kind==='final'?'voice-integrity.json':'preview-voice-integrity.json');
+    await command(path.join(root,'.venv/bin/python'),[path.join(root,'scripts/verify-original-audio.py'),voice.originalFile,path.join(dir,'voice/narration.wav'),decoded,integrity]);
+    sourceIntegrity=await readJson(integrity);
+   }
+  }
  }
- const report={passed:true,sourceIntegrity,duration,width:v.width,height:v.height,frames:Number(v.nb_frames),fps:v.r_frame_rate,videoCodec:v.codec_name,audioCodec:a.codec_name,decoded:true,sourceAudioOnset:sourceOnset,renderedAudioOnset:renderOnset,audioRms:energy(rendered),captionCount:captions.length,captionMethod:(await readJson(path.join(dir,'voice/result.json'))).method,alignmentScope:voice.method==='pocketsphinx-fr-forced-word-alignment'?'Local acoustic forced word alignment of the supplied French transcript, grouped for reading. No independent ASR or perceptual listening claimed.':voice.engine==='files'?'Imported SRT timings, not forced-aligned to speech.':'Measured synthesized phrase boundaries.'};
+ const report={passed:true,sourceIntegrity,duration,width:v.width,height:v.height,frames:Number(v.nb_frames),fps:v.r_frame_rate,videoCodec:v.codec_name,audioCodec:a?.codec_name??null,audioMode:voice.engine==='none'?(a?'music-preview':'silent'):'narration',voicePresent:voice.engine!=='none',decoded:true,sourceAudioOnset:sourceOnset,renderedAudioOnset:renderOnset,audioRms,captionCount:captions.length,captionMethod:voice.method,captionTiming:project.captionTiming,subtitlesSynchronized:!voice.provisional,alignmentScope:voice.provisional?'PROVISIONAL: reading timings from the validated script; no speech or acoustic synchronization.':voice.method==='pocketsphinx-fr-forced-word-alignment'?'Local acoustic forced word alignment of the supplied French transcript. No independent ASR or perceptual listening claimed.':voice.engine==='files'?'Imported SRT timings, not forced-aligned to speech.':'Measured synthesized phrase boundaries.'};
  await json(path.join(dir,kind==='final'?'verification.json':'preview-verification.json'),report);return report;
 }
 export function createHandlers(c,dir){
  return {
    plan:async()=>{
-    const text=c.narration.engine==='files'?parseSrt(await readFile(c.narration.srt,'utf8')).map(c=>c.text).join('\n'):c.narration.text??defaultScript(c);
+    const text=c.script?.text??(c.narration.engine==='files'?parseSrt(await readFile(c.narration.srt,'utf8')).map(c=>c.text).join('\n'):c.narration.text??defaultScript(c));
     const parts=splitScript(text);await writeFile(path.join(dir,'script.txt'),parts.join('\n')+'\n',{mode:0o600});
     const title=c.subject.length>28?c.subject.slice(0,25).trim()+'…':c.subject;
     const titles=[title,templates[c.template].beats[1],...(c.duration>=30?[templates[c.template].beats[2]]:[]),'Plantes & Bulles'];
-    await json(path.join(dir,'plan.json'),{subject:c.subject,template:c.template,duration:c.duration,parts,titles,direction:'Voix posée, phrases courtes, respirations naturelles.',scriptOrigin:c.narration.engine==='files'?'imported-srt':c.narration.text?'user-text':'deterministic-template-no-LLM',brag:c.brag.mode});
+    await json(path.join(dir,'plan.json'),{subject:c.subject,template:c.template,duration:c.duration,requestedDuration:c.requestedDuration??c.duration,parts,titles,direction:'Voix posée, phrases courtes, respirations naturelles.',scriptOrigin:c.script?'validated-script':c.narration.engine==='files'?'imported-srt':c.narration.text?'user-text':'deterministic-template-no-LLM',brag:c.brag.mode});
     await writeFile(path.join(dir,'brag-brief.md'),c.template==='application'?`# Brief Brag optionnel\nSujet : ${c.subject}\nImporter les exports MP4/photos de Brag ; pas d’API de scène supposée.\n`:'# Brag non utilisé\nCe modèle ne dépend pas de Brag.\n');
     return ['script.txt','plan.json','brag-brief.md'];
    },
@@ -65,19 +82,30 @@ export function createHandlers(c,dir){
    },
    voice:async()=>{
     const voiceDir=path.join(dir,'voice');await mkdir(voiceDir,{recursive:true,mode:0o700});const plan=await readJson(path.join(dir,'plan.json'));
+    if(c.narration.engine==='none'){
+     const groups=await configuredGroups(c,parseSrt);const captions=c.subtitles.srt?parseSrt(await readFile(c.subtitles.srt,'utf8')):provisionalCaptions(groups,c.duration);
+     const result={engine:'none',method:c.subtitles.srt?'edited-script-provisional-timing':'script-provisional-weighted-reading',provisional:true,synchronized:false,captions};
+     await json(path.join(voiceDir,'result.json'),result);return [path.join(voiceDir,'result.json')];
+    }
     const result=c.narration.engine==='files'?await importedSpeech(c,voiceDir,parseSrt):await assembleSpeech(await(c.narration.engine==='demo'?demoSpeech(plan.parts,voiceDir,c.narration):chatterboxSpeech(plan.parts,voiceDir,c.narration)),voiceDir,c.duration,{natural:c.mode==='production'});
     await json(path.join(voiceDir,'result.json'),result);return [result.audio,path.join(voiceDir,'result.json'),path.join(voiceDir,'alignment.json'),...(c.narration.alignment.mode==='acoustic'?[path.join(voiceDir,'acoustic-alignment.json')]:[])];
    },
    captions:async()=>{
     const result=await readJson(path.join(dir,'voice/result.json'));
+    if(c.script)validateGroups(c.script.text,result.captions.map(x=>x.text),c.subtitles);
     if(c.mode==='production'&&result.captions.some(cue=>cue.text.length>52||cue.text.split(/\s+/).length>7))throw new Error('Sous-titres trop longs pour le mobile. Recaler acoustiquement ou fournir des groupes vérifiés de 7 mots / 52 caractères maximum.');
-    projectSchema.parse({subject:c.subject,template:c.template,duration:c.duration,captions:result.captions});
-    await writeFile(path.join(dir,'captions.srt'),toSrt(result.captions),{mode:0o600});return ['captions.srt'];
+    projectSchema.parse({subject:c.subject,template:c.template,duration:c.duration,durationPolicy:c.narration.durationPolicy,captions:result.captions});
+    const status=result.provisional?'provisional':result.method==='pocketsphinx-fr-forced-word-alignment'?'aligned':'reviewed';
+    const srt=toSrt(result.captions),named=`captions.${status}.srt`;await writeFile(path.join(dir,'captions.srt'),srt,{mode:0o600});await writeFile(path.join(dir,named),srt,{mode:0o600});
+    await json(path.join(dir,'captions.timing.json'),{status,synchronized:status!=='provisional',method:result.method,srt:named,editable:true,notice:status==='provisional'?'TIMINGS PROVISOIRES — aucune voix présente, aucune synchronisation vocale.':'Alignement à vérifier à l’écoute avant validation HD.'});
+    return ['captions.srt',named,'captions.timing.json'];
    },
    scenes:async()=>{
-    const plan=await readJson(path.join(dir,'plan.json'));const result=await readJson(path.join(dir,'voice/result.json'));const {type,...audio}=await importMedia(c.narration.engine==='files'?result.originalFile:result.audio,{preserveAudio:c.narration.engine==='files'});audio.volume=1;audio.preserveSource=c.narration.engine==='files';
-    const project=projectSchema.parse({subject:c.subject,template:c.template,duration:c.duration,titles:plan.titles,media:await readJson(path.join(dir,'media.json')),captions:result.captions,captionOffset:0,audio,titleAnimation:'snapcn',visualStyle:c.visualStyle,captionStyle:c.captionStyle,productionMode:c.mode,allowIllustrations:c.mode==='demo'||c.exceptions.illustrations});
-    await validateAssets(project);await json(path.join(dir,'project.json'),project);await json(path.join(dir,'storyboard.json'),buildTimeline(project));return [path.join(dir,'project.json'),path.join(dir,'storyboard.json'),path.join(root,'public',audio.src)];
+    const plan=await readJson(path.join(dir,'plan.json'));const result=await readJson(path.join(dir,'voice/result.json'));let audio;
+    if(c.narration.engine!=='none'){const {type,...track}=await importMedia(c.narration.engine==='files'?result.originalFile:result.audio,{preserveAudio:c.narration.engine==='files'});audio={...track,volume:1,preserveSource:c.narration.engine==='files'};}
+    else if(c.music){const {type,...track}=await importMedia(c.music.audio);if(type!=='audio')throw new Error('La musique doit être un fichier audio.');audio={...track,volume:c.music.volume,loop:c.music.loop};}
+    const project=projectSchema.parse({subject:c.subject,template:c.template,duration:c.duration,durationPolicy:c.narration.durationPolicy,requestedDuration:c.requestedDuration,titles:plan.titles,media:await readJson(path.join(dir,'media.json')),captions:result.captions,captionTiming:result.provisional?'provisional':result.method==='pocketsphinx-fr-forced-word-alignment'?'aligned':'reviewed',captionAnimation:c.subtitles.animation,phraseBoundaries:result.phraseBoundaries,audioRole:c.music?'music':'narration',captionOffset:0,audio,titleAnimation:'snapcn',visualStyle:c.visualStyle,captionStyle:c.captionStyle,productionMode:c.mode,allowIllustrations:c.mode==='demo'||c.exceptions.illustrations});
+    await validateAssets(project);await json(path.join(dir,'project.json'),project);await json(path.join(dir,'storyboard.json'),buildTimeline(project));return [path.join(dir,'project.json'),path.join(dir,'storyboard.json'),...(audio?[path.join(root,'public',audio.src)]:[])];
    },
    render:async()=>{await renderProject(path.join(dir,'project.json'),path.join(dir,'final.mp4'));return ['final.mp4'];},
    verify:async()=>{await verifyProduction(dir,c.duration);const voice=await readJson(path.join(dir,'voice/result.json'));return ['verification.json',...(voice.engine==='files'?['voice-integrity.json']:[])];},

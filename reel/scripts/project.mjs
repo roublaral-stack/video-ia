@@ -22,7 +22,7 @@ export async function renderProject(file,output,{scale=1,approvalFile}={}){
  const out=path.resolve(output);await mkdir(path.dirname(out),{recursive:true});
  const nativeOut=project.audio?.preserveSource?out+'.remotion.mp4':out;
  const browser=process.env.REMOTION_BROWSER_EXECUTABLE||'/usr/bin/chromium';await access(browser);
- await new Promise((resolve,reject)=>{const p=spawn(process.execPath,[path.join(root,'node_modules/@remotion/cli/remotion-cli.js'),'render','src/index.ts','ReelGenerator',nativeOut,`--props=${props}`,`--browser-executable=${browser}`,'--concurrency=2',`--scale=${scale}`,'--is-production=false'],{cwd:root,stdio:'inherit'});p.on('error',reject);p.on('close',code=>code===0?resolve(out):reject(new Error(`Rendu échoué (${code})`)));});
+ await new Promise((resolve,reject)=>{const p=spawn(process.execPath,[path.join(root,'node_modules/@remotion/cli/remotion-cli.js'),'render','src/index.ts','ReelGenerator',nativeOut,`--props=${props}`,`--browser-executable=${browser}`,'--concurrency=2',`--scale=${scale}`,'--is-production=false',...(!project.audio?['--muted']:[])],{cwd:root,stdio:'inherit'});p.on('error',reject);p.on('close',code=>code===0?resolve(out):reject(new Error(`Rendu échoué (${code})`)));});
  if(project.audio?.preserveSource){
   // Copy Remotion's video stream, encode the protected input voice directly.
   // No mixer, fades, volume filter, trim, time stretch or loop on this path.

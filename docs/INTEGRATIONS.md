@@ -9,6 +9,14 @@ Les URL ont été fournies par l'utilisateur. L'accès Git HTTPS et les fichiers
 | Chatterbox | https://github.com/resemble-ai/chatterbox, HEAD `ab55923c27757c90cfcc407baa57dc25a7d25217`, README, pyproject et mtl_tts.py | Dépôt accessible ; API Python vérifiée ; inférence indisponible dans cette machine |
 | Brag | https://github.com/latent-spaces/brag, HEAD `669ab9286aa28b6c3ee30e75f181ee74319d012a`, README, scripts et manifeste | Dépôt accessible ; skill agent/Hyperframes, pas une API de scènes documentée |
 | Voix de démo | @echogarden/espeak-ng-emscripten 0.3.5 | Synthèse française locale opérationnelle ; ne reproduit pas la voix de Corentin |
+| Script First | script validé + médias + direction, sans narration | Aperçu sans voix et SRT provisoire ; aucun appel de synthèse ; accord limité au montage |
+| ElevenLabs par fichiers | WAV/MP3 local + script validé, PocketSphinx français | Import et alignement locaux opérationnels ; aucune API ElevenLabs, aucune clé ni synthèse appelée |
+
+## Nouveau parcours sans moteur vocal
+
+L’absence de `narration` signifie maintenant `engine: none`. Les fonctionnalités de narration historiques ci-dessous restent disponibles pour compatibilité ; elles ne sont pas appelées par Script First. Un script ne peut pas activer `demo` ou `chatterbox`. Après import d’un WAV/MP3, un nouveau projet est créé avec alignement acoustique, durée adaptée à la voix et nouvel accord requis. Le premier accord sans voix ne donne aucune autorisation HD. Les commandes et limites sont dans [SCRIPT_FIRST.md](SCRIPT_FIRST.md).
+
+La vérification privée de cette évolution utilise un WAV déjà fourni, déclaré export Chatterbox ; aucun nouvel enregistrement ElevenLabs n’est disponible. La compatibilité avec un export ElevenLabs correspond au même import WAV/MP3 par fichiers, sans prétendre avoir exécuté son service.
 
 ## Chatterbox
 

@@ -11,7 +11,7 @@ test('mobile editor: multi-import, SRT sync, project save, actual MP4 export and
  await command('ffmpeg',['-v','error','-y','-f','lavfi','-i','testsrc2=size=320x180:rate=30','-t','2','-c:v','libx264','-pix_fmt','yuv420p',dir+'/video.mov']);
  await command('ffmpeg',['-v','error','-y','-f','lavfi','-i','sine=frequency=220:duration=3','-c:a','pcm_s16le',dir+'/audio.wav']);
  await writeFile(dir+'/captions.srt','1\n00:00:01,000 --> 00:00:04,000\nSous-titre synchronisé.\n');
- const server=spawn(process.execPath,['scripts/editor.mjs'],{cwd:root,env:{...process.env,PORT:'3220'},stdio:['ignore','pipe','pipe']});let logs='';server.stdout.on('data',b=>logs=(logs+b).slice(-8000));server.stderr.on('data',b=>logs=(logs+b).slice(-8000));
+ const server=spawn(process.execPath,['scripts/editor.mjs'],{cwd:root,detached:true,env:{...process.env,PORT:'3220'},stdio:['ignore','pipe','pipe']});let logs='';server.stdout.on('data',b=>logs=(logs+b).slice(-8000));server.stderr.on('data',b=>logs=(logs+b).slice(-8000));
  let browser;
  try{
   let ready=false;for(let i=0;i<60;i++){try{if((await fetch('http://127.0.0.1:3220/')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}assert(ready,'editor server ready');
@@ -35,5 +35,5 @@ test('mobile editor: multi-import, SRT sync, project save, actual MP4 export and
   const meta=await probe(dir+'/editor-export.mp4');// AAC packets add up to one codec frame of padding to the container.
   assert(Math.abs(Number(meta.format.duration)-15)<.05);const video=meta.streams.find(s=>s.codec_type==='video');assert.equal(Number(video.duration),15);assert.equal(video.width,1080);assert.equal(video.height,1920);assert.equal(Number(video.nb_frames),450);assert(meta.streams.some(s=>s.codec_type==='audio'));
   await command('ffmpeg',['-v','error','-i',dir+'/editor-export.mp4','-f','null','-']);assert.deepEqual(errors,[]);
- }catch(e){throw new Error(e.message+'\n'+logs,{cause:e});}finally{await browser?.close();server.kill('SIGTERM');}
+ }catch(e){throw new Error(e.message+'\n'+logs,{cause:e});}finally{await browser?.close();try{process.kill(-server.pid,'SIGTERM');}catch{}const cleanup=setTimeout(()=>{try{process.kill(-server.pid,'SIGKILL');}catch{}},2000);cleanup.unref();}
 });

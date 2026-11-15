@@ -7,7 +7,7 @@ const fonts=[new FontFace('DemoSans',`url(${staticFile('fonts/DejaVuSans.ttf')})
 Promise.all(fonts.map(f=>f.load())).then(loaded=>{loaded.forEach(f=>document.fonts.add(f));continueRender(handle);}).catch(cancelRender);
 const metadata:CalculateMetadataFunction<{project:Project}>=({props})=>{
  const project=projectSchema.parse(props.project);
- return {durationInFrames:project.duration*30,props:{project}};
+ return {durationInFrames:Math.round(project.duration*30),props:{project}};
 };
 export const Root=()=> <>
  <Composition id="PlantesBulles" component={Reel} width={1080} height={1920} fps={30} durationInFrames={450} defaultProps={{brand:'Plantes & Bulles'}}/>

@@ -56,8 +56,10 @@ def make_groups(cues,words,data,rate=16000,max_words=5,max_chars=34):
  if tokens(' '.join(c['text'] for c in out))!=tokens(' '.join(c['text'] for c in cues)):raise ValueError('Le texte a changé.')
  return out
 
-def align(audio,srt,model):
- cues=parse_srt(srt.read_text());transcript=' '.join(c['text'] for c in cues);expected=tokens(transcript)
+def align(audio,srt,model,script_only=False):
+ cues=[] if script_only else parse_srt(srt.read_text());transcript=srt.read_text().strip() if script_only else ' '.join(c['text'] for c in cues);expected=tokens(transcript)
+ if not expected:raise ValueError('Transcript vide ou non prononçable.')
+ if script_only and re.search(r'\d',transcript):raise ValueError('Écrire les nombres en toutes lettres dans le script pour cet aligneur français local.')
  decoder=Decoder(hmm=str(model/'acoustic_model'),dict=str(model/'dictionary.dict'),lm=None,samprate=16000,loglevel='ERROR',bestpath=False,beam=1e-80,wbeam=1e-60)
  if (model/'custom.dict').exists():
   for line in (model/'custom.dict').read_text().splitlines():
@@ -77,8 +79,8 @@ def align(audio,srt,model):
  for cue in cues:
   n=len(tokens(cue['text']));part=words[offset:offset+n];offset+=n
   if part[0]['start']<cue['start']-.5 or part[-1]['end']>cue['end']+.5:raise ValueError('Désaccord important avec le SRT source ; contrôle manuel nécessaire.')
- return {'method':'pocketsphinx-fr-forced-word-alignment','language':'fr','granularity':'short-word-groups','audioModified':False,'inputSha256':hashlib.sha256(audio.read_bytes()).hexdigest(),'sourceSrtSha256':hashlib.sha256(srt.read_bytes()).hexdigest(),'dictionarySha256':hashlib.sha256((model/'dictionary.dict').read_bytes()).hexdigest(),'modelSource':json.loads((model/'provenance.json').read_text()) if (model/'provenance.json').exists() else {'path':str(model)},'wordCount':len(words),'words':words,'captions':make_groups(cues,words,data),'limitations':'Acoustic forced alignment of supplied French transcript; no independent ASR or perceptual listening claimed.'}
+ return {'method':'pocketsphinx-fr-forced-word-alignment','language':'fr','granularity':'words' if script_only else 'short-word-groups','transcriptSource':'validated-script' if script_only else 'provided-srt','audioModified':False,'inputSha256':hashlib.sha256(audio.read_bytes()).hexdigest(),'sourceTextSha256':hashlib.sha256(srt.read_bytes()).hexdigest(),'dictionarySha256':hashlib.sha256((model/'dictionary.dict').read_bytes()).hexdigest(),'modelSource':json.loads((model/'provenance.json').read_text()) if (model/'provenance.json').exists() else {'path':str(model)},'wordCount':len(words),'words':words,'captions':[] if script_only else make_groups(cues,words,data),'limitations':'Acoustic forced alignment of supplied French transcript; no independent ASR or perceptual listening claimed.'}
 if __name__=='__main__':
  try:
-  audio,srt,model,out=map(Path,sys.argv[1:5]);result=align(audio,srt,model);out.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n');print(f"Alignement local : {result['wordCount']} mots, {len(result['captions'])} groupes.")
+  audio,srt,model,out=map(Path,sys.argv[1:5]);result=align(audio,srt,model,script_only='--script' in sys.argv[5:]);out.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n');print(f"Alignement local : {result['wordCount']} mots, {len(result['captions'])} groupes.")
  except Exception as e:raise SystemExit('Alignement refusé : '+str(e))

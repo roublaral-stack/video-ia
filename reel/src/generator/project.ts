@@ -1,10 +1,17 @@
 import {z} from 'zod';
+import {captionAnimationSchema} from './caption-settings.ts';
 const localSource=z.string().regex(/^(uploads|demo)\/[a-zA-Z0-9_.-]+$/, 'Utilisez un fichier importé, pas une URL externe.');
 export const projectSchema=z.object({
   version:z.literal(1).default(1),
   subject:z.string().trim().min(1).max(120),
   template:z.enum(['educatif','vlog','application']),
-  duration:z.union([z.literal(15),z.literal(30),z.literal(60)]),
+  duration:z.number().positive().max(600),
+  durationPolicy:z.enum(['fixed','audio']).default('fixed'),
+  requestedDuration:z.union([z.literal(15),z.literal(30),z.literal(60)]).optional(),
+  captionTiming:z.enum(['legacy','provisional','aligned','reviewed']).default('legacy'),
+  captionAnimation:captionAnimationSchema.default({}),
+  phraseBoundaries:z.array(z.number().min(0).max(600)).max(500).default([]),
+  audioRole:z.enum(['narration','music']).default('narration'),
   titleAnimation:z.enum(['simple','snapcn']).default('simple'),
   visualStyle:z.enum(['nature','typography','cinematic']).default('nature'),
   productionMode:z.enum(['legacy','demo','production']).default('legacy'),
@@ -17,6 +24,8 @@ export const projectSchema=z.object({
   captionOffset:z.number().min(-60).max(60).default(0),
   audio:z.object({src:localSource,durationSeconds:z.number().positive(),trimStart:z.number().min(0).default(0),from:z.number().min(0).default(0),volume:z.number().min(0).max(1).default(.6),loop:z.boolean().default(false),preserveSource:z.boolean().default(false)}).optional(),
 }).superRefine((p,ctx)=>{
+  if(p.durationPolicy==='fixed'&&![15,30,60].includes(p.duration))ctx.addIssue({code:'custom',path:['duration'],message:'Durée fixe : 15, 30 ou 60 secondes. La durée précise est réservée au montage adapté à l’audio.'});
+  if(p.durationPolicy==='audio'&&Math.abs(p.duration*30-Math.round(p.duration*30))>.00001)ctx.addIssue({code:'custom',path:['duration'],message:'La durée adaptée doit correspondre à un nombre entier d’images à 30 fps.'});
   if(p.media.length>Math.floor(p.duration/2))ctx.addIssue({code:'custom',path:['media'],message:'Prévoir au moins 2 secondes par média ; choisissez une durée plus longue.'});
   for(const [i,m] of p.media.entries())if(m.type==='video'&&(!m.durationSeconds||m.trimStart>=m.durationSeconds))ctx.addIssue({code:'custom',path:['media',i],message:'Durée vidéo ou point de départ invalide.'});
   let last=0;
@@ -39,7 +48,7 @@ export function buildTimeline(project:Project,fps=30):Shot[]{
  const p=projectSchema.parse(project);const count=Math.max(3,Math.ceil(p.duration/5),p.media.length,p.titles.length);
  if(count>p.duration*fps/45)throw new Error('Trop de titres pour cette durée.');
  const overlaps=Array.from({length:count},(_,i)=>i>0&&i%2===1?12:0);
- const budget=p.duration*fps+overlaps.reduce<number>((a,b)=>a+b,0);const base=Math.floor(budget/count);let from=0;
+ const budget=Math.round(p.duration*fps)+overlaps.reduce<number>((a,b)=>a+b,0);const base=Math.floor(budget/count);let from=0;
  return Array.from({length:count},(_,i)=>{const duration=base+(i<budget%count?1:0);from-=overlaps[i];const shot={index:i,from,duration,overlap:overlaps[i],title:p.titles[i]??(i===0?p.subject:templates[p.template].beats[Math.min(i,3)]),media:p.media.length?p.media[i%p.media.length]:undefined};from+=duration;return shot;});
 }
 // Outgoing titles finish before the incoming title appears during a dissolve.
@@ -49,7 +58,7 @@ export function parseSrt(text:string){
  return text.replace(/^\uFEFF/,'').trim().split(/\r?\n\s*\r?\n/).filter(Boolean).map(block=>{const lines=block.split(/\r?\n/);if(/^\d+$/.test(lines[0]))lines.shift();const parts=lines.shift()?.split(/\s+-->\s+/);if(!parts||parts.length!==2)throw new Error('Bloc SRT invalide');return {start:stamp(parts[0]),end:stamp(parts[1]),text:lines.join(' ').replace(/<[^>]*>/g,'')};});
 }
 // Provisional timing from written copy; the user must align it with actual speech.
-export function makeCaptions(text:string,duration:15|30|60){
+export function makeCaptions(text:string,duration:number){
  const words=text.trim().split(/\s+/).filter(Boolean);if(!words.length)throw new Error('Ajoutez le texte des sous-titres.');
  const lines:string[]=[];let line='';for(const word of words){if(word.length>60)throw new Error('Un mot est trop long.');if((line+' '+word).trim().length>60){lines.push(line);line=word;}else line=(line+' '+word).trim();}if(line)lines.push(line);
  if(lines.length>duration)throw new Error('Texte trop long : prévoyez au moins une seconde par sous-titre.');

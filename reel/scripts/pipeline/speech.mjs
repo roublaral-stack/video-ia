@@ -2,6 +2,7 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {command,probe,root} from '../media.mjs';
 import {digest,readJson,json} from './store.mjs';
+import {configuredGroups,alignGroups} from './script-captions.mjs';
 export function wav(pcm,rate=48000){const h=Buffer.alloc(44);h.write('RIFF');h.writeUInt32LE(36+pcm.length,4);h.write('WAVEfmt ',8);h.writeUInt32LE(16,16);h.writeUInt16LE(1,20);h.writeUInt16LE(1,22);h.writeUInt32LE(rate,24);h.writeUInt32LE(rate*2,28);h.writeUInt16LE(2,32);h.writeUInt16LE(16,34);h.write('data',36);h.writeUInt32LE(pcm.length,40);return Buffer.concat([h,pcm]);}
 export function pcm(data){
  if(data.toString('ascii',0,4)!=='RIFF')throw new Error('WAV PCM attendu.');let valid=false;
@@ -33,14 +34,18 @@ export async function importedSpeech(config,dir,parseSrt){
  const source=config.narration.audio,file=path.join(dir,'narration.wav');const inputSha256=await digest(source);
  // Technical conversion only. No loudness filter, trim, tempo, pitch, delay or fade.
  await command('ffmpeg',['-v','error','-y','-i',source,'-vn','-ar','48000','-ac','1','-c:a','pcm_s16le',file]);
- const length=Number((await probe(file)).format.duration);let captions=parseSrt(await readFile(config.narration.srt,'utf8')),method='imported-srt-timing-not-forced-alignment';
+ const length=Number((await probe(file)).format.duration);let captions=config.narration.srt?parseSrt(await readFile(config.narration.srt,'utf8')):[],method='imported-srt-timing-not-forced-alignment',phraseBoundaries=[];
  if(config.narration.alignment?.mode==='acoustic'){
   const report=path.join(dir,'acoustic-alignment.json');
-  await command(config.narration.alignment.python,[path.join(root,'scripts/align-import.py'),source,config.narration.srt,config.narration.alignment.model,report]);
-  const aligned=await readJson(report);if(aligned.inputSha256!==inputSha256)throw new Error('L’alignement ne correspond pas au WAV fourni.');captions=aligned.captions;method=aligned.method;
+  let transcript=config.narration.srt;
+  if(config.script){transcript=path.join(dir,'transcript.txt');await writeFile(transcript,config.script.text,{mode:0o600});}
+  await command(config.narration.alignment.python,[path.join(root,'scripts/align-import.py'),source,transcript,config.narration.alignment.model,report,...(config.script?['--script']:[])]);
+  const aligned=await readJson(report);if(aligned.inputSha256!==inputSha256)throw new Error('L’alignement ne correspond pas au WAV fourni.');
+  if(config.script){const result=alignGroups(config.script.text,await configuredGroups(config,parseSrt,{words:aligned.words}),aligned.words,length);captions=result.captions;phraseBoundaries=result.phraseBoundaries;await json(report,{...aligned,captions,phraseBoundaries});}else captions=aligned.captions;
+  method=aligned.method;
  }
  if(length>config.duration+.001||!captions.length||captions.some(c=>c.start<0||c.end>length||c.end<=c.start))throw new Error('Audio/SRT hors durée ou vide ; fournir un SRT aligné sur cet audio.');
  await json(path.join(dir,'alignment.json'),{method,captions,inputSha256,audioOrigin:'files',preserveSource:true,transforms:['resample-48000','mono-pcm16'],noVoiceSubstitution:true});
- return {audio:file,captions,method,engine:'files',preserveSource:true,originalFile:source,inputSha256};
+ return {audio:file,captions,method,phraseBoundaries,provisional:false,engine:'files',preserveSource:true,originalFile:source,inputSha256};
 }
 export function toSrt(captions){const stamp=s=>{const n=Math.round(s*1000);return `${String(Math.floor(n/3600000)).padStart(2,'0')}:${String(Math.floor(n/60000)%60).padStart(2,'0')}:${String(Math.floor(n/1000)%60).padStart(2,'0')},${String(n%1000).padStart(3,'0')}`;};return captions.map((c,i)=>`${i+1}\n${stamp(c.start)} --> ${stamp(c.end)}\n${c.text}\n`).join('\n');}

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "mode": "production",
+  "subject": "Un détail à observer",
+  "template": "vlog",
+  "duration": 15,
+  "script": {
+    "text": "Regardez cette feuille. Sa lumière change au fil de la journée. Prenons le temps de regarder les détails.",
+    "validated": true
+  },
+  "media": ["../private/mon-plan.jpg"],
+  "visualStyle": "cinematic",
+  "captionStyle": "editorial",
+  "subtitles": {
+    "minWords": 2,
+    "maxWords": 5,
+    "animation": {"mode": "subtle", "fadeInFrames": 2, "riseFrames": 3, "risePx": 7}
+  },
+  "creative": {
+    "hook": "Regardez\nde plus près.",
+    "intention": "Choisir un plan réel correspondant au texte validé. Zoom léger, titrage sobre et sous-titres discrets.",
+    "limitations": ["Aperçu sans voix : le calage des sous-titres reste provisoire."]
+  }
+}

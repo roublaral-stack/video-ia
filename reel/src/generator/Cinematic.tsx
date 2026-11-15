@@ -21,6 +21,7 @@ export const Cinematic=({project}:{project:Project})=>{
   <div style={{position:'absolute',left:88,top:105,fontSize:29,fontWeight:500,opacity:endCard?0:1}}>Plantes <span style={{color:'#e1e4cd'}}>& Bulles</span></div>
   {f<2.4*fps&&<div data-testid="film-hook" style={{position:'absolute',left:86,right:100,top:315,fontFamily:'EditorialSerif',fontSize:88,lineHeight:1.06,whiteSpace:'pre-line',opacity:interpolate(f,[0,8,2.15*fps,2.4*fps],[0,1,1,0],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}),translate:interpolate(f,[0,12],['0px 12px','0px 0px'],{extrapolateRight:'clamp'})}}>{hook}</div>}
   <ModernCaptions project={project} cinematic/>
+  {project.captionTiming==='provisional'&&<div style={{position:'absolute',left:88,bottom:100,fontSize:22,color:'#e1e4cd'}}>Montage sans voix · calage provisoire</div>}
   {project.productionMode==='demo'&&<div style={{position:'absolute',left:88,bottom:100,fontSize:23,background:'rgba(4,17,12,.8)',padding:'8px 12px'}}>DÉMONSTRATION · médias de test</div>}
   {endCard&&<div style={{position:'absolute',left:88,bottom:175,fontFamily:'EditorialSerif',fontSize:46,opacity:interpolate(f,[durationInFrames-1.3*fps,durationInFrames-fps],[0,1],{extrapolateRight:'clamp'})}}>Plantes & Bulles</div>}
  </AbsoluteFill>;
