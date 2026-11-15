@@ -2,6 +2,7 @@ import React from 'react';
 import {AbsoluteFill, Interactive, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
 import {TransitionSeries, linearTiming} from '@remotion/transitions';
 import {fade} from '@remotion/transitions/fade';
+import {titleVisibility} from './generator/project';
 import {TextReveal} from './components/snap-cn/text-reveal';
 
 export const Aquarium = ({tropical = false}: {tropical?: boolean}) => {
@@ -25,10 +26,10 @@ const Scene = ({title, subtitle, number, tropical=false, closing=false}: {title:
  return <AbsoluteFill style={{fontFamily:'DemoSans',color:'#f4f1df',overflow:'hidden'}}>
   <Aquarium tropical={tropical}/>
   <AbsoluteFill style={{background:'linear-gradient(180deg,rgba(5,24,24,.68),transparent 66%)'}}/>
-  <Interactive.Div name="Marque" style={{position:'absolute',left:88,top:125,fontSize:30}}>Plantes & Bulles <span style={{color:'#bad29b'}}> / {number}</span></Interactive.Div>
-  <Interactive.Div name="Titre" style={{position:'absolute',left:80,right:80,top:310,height:230}}><TextReveal text={title} fontSize={closing?68:76} initialScale={1.12} color="#f4f1df" letterSpacing="0" fontWeight={600}/></Interactive.Div>
-  <Interactive.Div name="Sous-titre" style={{position:'absolute',top:600,left:100,right:100,textAlign:'center',fontSize:43,lineHeight:1.45,opacity:interpolate(frame,[.7*fps,1.4*fps],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'}),translate:interpolate(frame,[.7*fps,1.4*fps],['0px 24px','0px 0px'],{extrapolateLeft:'clamp',extrapolateRight:'clamp'})}}>{subtitle}</Interactive.Div>
-  <Interactive.Div name="Invitation" style={{position:'absolute',left:100,bottom:300,fontSize:34,borderTop:'1px solid #a5b695',paddingTop:24,color:'#e0e8c9'}}>{closing?'Cultivons un peu de nature.':'Aquariums · Plantes tropicales'}</Interactive.Div>
+  <Interactive.Div name="Marque" style={{position:'absolute',left:88,top:125,fontSize:30,opacity:titleVisibility(frame,160)}}>Plantes & Bulles <span style={{color:'#bad29b'}}> / {number}</span></Interactive.Div>
+  <Interactive.Div name="Titre" style={{position:'absolute',left:80,right:80,top:310,height:230,opacity:titleVisibility(frame,160)}}><TextReveal text={title} fontSize={closing?68:76} initialScale={1.12} color="#f4f1df" letterSpacing="0" fontWeight={600}/></Interactive.Div>
+  <Interactive.Div name="Sous-titre" style={{position:'absolute',top:600,left:100,right:100,textAlign:'center',fontSize:43,lineHeight:1.45,opacity:interpolate(frame,[.7*fps,1.4*fps],[0,1],{extrapolateLeft:'clamp',extrapolateRight:'clamp'})*titleVisibility(frame,160),translate:interpolate(frame,[.7*fps,1.4*fps],['0px 24px','0px 0px'],{extrapolateLeft:'clamp',extrapolateRight:'clamp'})}}>{subtitle}</Interactive.Div>
+  <Interactive.Div name="Invitation" style={{position:'absolute',left:100,bottom:300,fontSize:34,borderTop:'1px solid #a5b695',paddingTop:24,color:'#e0e8c9',opacity:titleVisibility(frame,160)}}>{closing?'Cultivons un peu de nature.':'Aquariums · Plantes tropicales'}</Interactive.Div>
   <div style={{position:'absolute',left:100,bottom:185,fontSize:25,color:'#c3d1c2'}}>Démo · Illustrations originales de substitution</div>
  </AbsoluteFill>;
 };

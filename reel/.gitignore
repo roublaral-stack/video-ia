@@ -7,3 +7,6 @@ out/
 build/
 .venv/
 __pycache__/
+# Personal projects and media stay local unless deliberately archived
+public/uploads/
+projects/

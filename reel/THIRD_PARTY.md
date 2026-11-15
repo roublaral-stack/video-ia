@@ -5,3 +5,5 @@
 - Police DejaVu Sans embarquée : avis complet dans `public/fonts/COPYRIGHT`.
 - Remotion et ses dépendances : versions figées dans package-lock.json ; leurs licences restent celles des projets respectifs. Les conditions Remotion dépendent de l'usage et de la taille de l'organisation.
 - Démo silencieuse : aucune musique ni voix off, donc aucun enregistrement tiers utilisé.
+
+Le générateur n'utilise aucun service de transcription, média distant ou musique téléchargée. Les médias importés restent sous la responsabilité de leur propriétaire et sont ignorés par Git par défaut (`public/uploads/`, `projects/`). Les tests utilisent des signaux et images synthétiques produits localement par FFmpeg ; ils restent dans `out/`. `@remotion/media`, Zod et Playwright Core sont des dépendances installées via npm ; leurs versions et licences sont celles enregistrées dans package-lock.json.
