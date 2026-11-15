@@ -1,0 +1,22 @@
+# TEMPLATE ONLY — user, paths and dependencies require host validation.
+[Unit]
+Description=VIDEO IA private web atelier
+After=network.target
+
+[Service]
+Type=simple
+User=videoia
+Group=videoia
+WorkingDirectory=/srv/video-ia/reel
+EnvironmentFile=/etc/video-ia/web.env
+ExecStart=/usr/bin/node /srv/video-ia/reel/scripts/web/server.mjs
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

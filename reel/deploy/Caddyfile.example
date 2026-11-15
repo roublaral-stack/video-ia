@@ -1,0 +1,8 @@
+# TEMPLATE ONLY — replace the domain and validate on the chosen host.
+# There is intentionally no file_server or static route to private storage.
+video.example.invalid {
+    request_body {
+        max_size 9MB
+    }
+    reverse_proxy 127.0.0.1:3300
+}

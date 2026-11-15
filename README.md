@@ -4,6 +4,18 @@ Générateur de Reels **Script First** : commencer avec un script validé, des m
 
 Le code reste dans `reel/`. La composition originale `PlantesBulles`, SnapCN, les imports, les modèles Éducatif/Vlog/Application, l’atelier, le SRT et les archives sont conservés. Les dépôts Brag et Voix off ne sont pas modifiés.
 
+## Atelier web privé pour iPhone
+
+Une interface mobile ajoute la connexion personnelle, l’import multiple des originaux par morceaux avec reprise et SHA-256, la voix WAV/MP3 facultative, les projets Script First, les aperçus et les téléchargements privés MP4/SRT/ZIP. Les originaux sont conservés ; les copies de montage nécessitent un accord explicite.
+
+```bash
+cd /workspace/video-ia/reel
+npm run web:setup
+npm run web
+```
+
+Ce serveur est **local**, sur `127.0.0.1:3300`. **Aucun hébergement n’est déployé et aucune URL accessible sur iPhone n’est vérifiée.** Pour l’utiliser depuis Safari, il faut un serveur persistant, un domaine HTTPS, un stockage privé et une sauvegarde. Voir [l’architecture, les coûts, les limites Safari et les commandes](docs/PRIVATE_WEB.md). L’authentification et les téléchargements protégés ont été conçus pour ce nouvel atelier ; ne pas exposer l’ancien `editor` directement sur Internet.
+
 ## Installer et vérifier
 
 Node **24**, Python 3, FFmpeg/ffprobe et Chromium sont nécessaires. Dans cet environnement, Chromium est installé à `/usr/bin/chromium` ; aucun téléchargement de navigateur n’est nécessaire.

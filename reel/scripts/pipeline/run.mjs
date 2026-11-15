@@ -9,10 +9,10 @@ import {loadConfig,sha,splitScript,defaultScript} from './config.mjs';
 import {digest,json,readJson,fingerprints,intact,lock} from './store.mjs';
 import {demoSpeech,chatterboxSpeech,assembleSpeech,importedSpeech,toSrt,pcm} from './speech.mjs';
 import {configuredGroups,provisionalCaptions,validateGroups} from './script-captions.mjs';
-export const runsRoot=path.join(root,'pipeline-runs');
+export const runsRoot=path.resolve(process.env.VIDEO_IA_RUNS_DIR??path.join(root,'pipeline-runs'));
 export const steps=['plan','media','voice','captions','scenes','render','verify','archive'];
 async function sourceFiles(dir){const result=[];for(const e of await readdir(dir,{withFileTypes:true})){const file=path.join(dir,e.name);if(e.isDirectory())result.push(...await sourceFiles(file));else if(/\.(mjs|py|tsx?|json)$/.test(e.name))result.push(file);}return result;}
-export async function identify(configFile){
+export async function identify(configFile,{directoryRoot=runsRoot}={}){
  const config=await loadConfig(configFile);
  const inputs=[...config.media,...config.brag.files,...['audio','srt','referenceAudio'].map(k=>config.narration[k]).filter(Boolean)];
  if(config.music)inputs.push(config.music.audio);
@@ -22,7 +22,7 @@ export async function identify(configFile){
  const inputHashes=await fingerprints(inputs);
  const fonts=(await readdir(path.join(root,'public/fonts'))).filter(f=>/\.ttf$/.test(f)).sort().map(f=>path.join(root,'public/fonts',f));
  const sourceHashes=await fingerprints([...(await sourceFiles(path.join(root,'src'))),...(await sourceFiles(path.join(root,'scripts'))),...(await sourceFiles(path.join(root,'adapters'))),...fonts,...['package.json','package-lock.json','tsconfig.json','requirements-alignment.txt','requirements-render.txt'].map(f=>path.join(root,f))]);
- const key=sha(JSON.stringify({config,inputHashes,sourceHashes}));return {config,inputHashes,key,id:key.slice(0,24),directory:path.join(runsRoot,key.slice(0,24))};
+ const key=sha(JSON.stringify({config,inputHashes,sourceHashes}));return {config,inputHashes,key,id:key.slice(0,24),directory:path.join(directoryRoot,key.slice(0,24))};
 }
 async function demoMedia(dir){
  await command(path.join(root,'.venv/bin/python'),[path.join(root,'scripts/pipeline/demo.py'),dir]);

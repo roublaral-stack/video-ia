@@ -10,6 +10,8 @@
     "render:fallback": ".venv/bin/python scripts/render-fallback.py",
     "project": "node scripts/project.mjs",
     "editor": "node scripts/editor.mjs",
+    "web:setup": "node scripts/web/setup.mjs",
+    "web": "node scripts/web/server.mjs",
     "test": "node --test --test-concurrency=2 tests/*.test.mjs tests/voice/*.test.mjs",
     "produce": "node scripts/production.mjs",
     "test:script-first:import": "node scripts/test-script-first-import.mjs",
@@ -19,6 +21,7 @@
   },
   "dependencies": {
     "@echogarden/espeak-ng-emscripten": "0.3.5",
+    "@noble/hashes": "2.4.0",
     "@remotion/cli": "4.0.543",
     "@remotion/media": "4.0.543",
     "@remotion/transitions": "4.0.543",
