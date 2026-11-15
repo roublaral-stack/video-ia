@@ -1,0 +1,24 @@
+{
+  "name": "plantes-bulles-reel",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts PlantesBulles out/plantes-bulles-remotion.mp4 --concurrency=2 --is-production=false",
+    "typecheck": "tsc --noEmit",
+    "render:cloud": "remotion render src/index.ts PlantesBulles out/plantes-bulles-remotion.mp4 --concurrency=2 --is-production=false --browser-executable=/usr/bin/chromium",
+    "render:fallback": ".venv/bin/python scripts/render-fallback.py"
+  },
+  "dependencies": {
+    "remotion": "4.0.543",
+    "@remotion/cli": "4.0.543",
+    "@remotion/transitions": "4.0.543",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0"
+  }
+}

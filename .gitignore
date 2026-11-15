@@ -1,0 +1,12 @@
+# Local credentials and generated files, at any project level
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+node_modules/
+.venv/
+__pycache__/
+.npm-cache/
+.pip-cache/
+.DS_Store
