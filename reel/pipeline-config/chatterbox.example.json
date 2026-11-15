@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "subject": "Mes plantes tropicales",
+  "template": "vlog",
+  "duration": 30,
+  "demo": false,
+  "media": [],
+  "narration": {
+    "engine": "chatterbox",
+    "python": "python3",
+    "device": "cpu",
+    "text": "Prenons le temps de regarder les feuilles.\nChaque image garde un petit détail.\nVoilà un moment avec Plantes et Bulles.",
+    "exaggeration": 0.5,
+    "cfgWeight": 0.5
+  },
+  "brag": {"mode": "off", "files": []}
+}

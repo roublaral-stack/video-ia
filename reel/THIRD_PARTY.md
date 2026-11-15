@@ -7,3 +7,5 @@
 - Démo silencieuse : aucune musique ni voix off, donc aucun enregistrement tiers utilisé.
 
 Le générateur n'utilise aucun service de transcription, média distant ou musique téléchargée. Les médias importés restent sous la responsabilité de leur propriétaire et sont ignorés par Git par défaut (`public/uploads/`, `projects/`). Les tests utilisent des signaux et images synthétiques produits localement par FFmpeg ; ils restent dans `out/`. `@remotion/media`, Zod et Playwright Core sont des dépendances installées via npm ; leurs versions et licences sont celles enregistrées dans package-lock.json.
+
+Voix de démonstration : `@echogarden/espeak-ng-emscripten` 0.3.5 (GPL-3.0, avis et sources référencés dans le paquet npm). Utilisation locale, sans voix de référence personnelle. Cette synthèse est distincte de Chatterbox. Les médias de la nouvelle démo sont dessinés localement par `scripts/pipeline/demo.py`. Les résultats vocaux et ZIP de production ne sont pas publiés sur GitHub. Le pont Chatterbox est écrit pour l'API du dépôt audité, sans copie des poids ni du code modèle ; voir `docs/INTEGRATIONS.md` à la racine.

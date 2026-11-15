@@ -16,10 +16,10 @@ elif mode=='restore':
  with zipfile.ZipFile(archive) as z:
   if sum(i.file_size for i in z.infolist())>2*1024**3:raise ValueError('Archive too large')
   for i in z.infolist():
-   if i.filename!='project.json' and not re.fullmatch(r'public/(uploads|demo)/[a-zA-Z0-9_.-]+',i.filename):raise ValueError('Unsafe archive path')
+   if i.filename!='project.json' and not re.fullmatch(r'public/(uploads|demo)/[a-zA-Z0-9_.-]+|production/[a-zA-Z0-9_.-]+',i.filename):raise ValueError('Unsafe archive path')
   p=json.loads(z.read('project.json'))
   for i in z.infolist():
-   if i.filename=='project.json':continue
+   if i.filename=='project.json' or i.filename.startswith('production/'):continue
    dest=root/i.filename;dest.parent.mkdir(parents=True,exist_ok=True)
    data=z.read(i)
    if dest.exists() and dest.read_bytes()!=data:raise ValueError('Existing media differs')

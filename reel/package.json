@@ -10,9 +10,11 @@
     "render:fallback": ".venv/bin/python scripts/render-fallback.py",
     "project": "node scripts/project.mjs",
     "editor": "node scripts/editor.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "produce": "node scripts/pipeline/run.mjs"
   },
   "dependencies": {
+    "@echogarden/espeak-ng-emscripten": "0.3.5",
     "@remotion/cli": "4.0.543",
     "@remotion/media": "4.0.543",
     "@remotion/transitions": "4.0.543",

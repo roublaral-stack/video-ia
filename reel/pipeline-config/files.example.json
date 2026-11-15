@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "subject": "Mon aquarium",
+  "template": "educatif",
+  "duration": 30,
+  "demo": false,
+  "media": ["../private/photo.jpg", "../private/plan.mov"],
+  "narration": {
+    "engine": "files",
+    "audio": "../private/narration.wav",
+    "srt": "../private/narration.srt"
+  },
+  "brag": {"mode": "off", "files": []}
+}

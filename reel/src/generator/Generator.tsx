@@ -3,6 +3,7 @@ import {AbsoluteFill, Img, Loop, OffthreadVideo, Sequence, interpolate, staticFi
 import {Audio} from '@remotion/media';
 import {TransitionSeries,linearTiming} from '@remotion/transitions';
 import {fade} from '@remotion/transitions/fade';
+import {TextReveal} from '../components/snap-cn/text-reveal';
 import {Aquarium} from '../Reel';
 import {buildTimeline,templates,titleVisibility,type Project,type Shot} from './project';
 
@@ -12,7 +13,7 @@ const ShotView=({shot,project}:{shot:Shot;project:Project})=>{
   {m?.type==='image'?<Img src={staticFile(m.src)} style={{width:'100%',height:'100%',objectFit:m.fit,scale:interpolate(frame,[0,shot.duration],[1,1.05])}}/>:m?.type==='video'?<Loop durationInFrames={Math.max(1,Math.floor(((m.durationSeconds??1)-m.trimStart)*fps))}><OffthreadVideo muted src={staticFile(m.src)} startFrom={Math.round(m.trimStart*fps)} style={{width:'100%',height:'100%',objectFit:m.fit}}/></Loop>:<Aquarium tropical={shot.index%2===1}/>}
   <AbsoluteFill style={{background:'linear-gradient(180deg,rgba(4,22,22,.85),rgba(4,22,22,.05) 60%,rgba(4,22,22,.8))'}}/>
   <div style={{position:'absolute',left:90,top:130,fontSize:30}}>Plantes & Bulles · {templates[project.template].name}</div>
-  <div data-testid="generator-title" style={{position:'absolute',left:90,right:90,top:310,fontSize:shot.title.length>40?64:84,lineHeight:1.15,overflowWrap:'anywhere',opacity:visible,translate:`0px ${interpolate(visible,[0,1],[28,0])}px`}}>{shot.title}</div>
+  <div data-testid="generator-title" style={{position:'absolute',left:90,right:90,top:310,fontSize:shot.title.length>40?64:84,lineHeight:1.15,overflowWrap:'anywhere',opacity:visible,translate:`0px ${interpolate(visible,[0,1],[28,0])}px`}}>{project.titleAnimation==='snapcn'?<div style={{position:'relative',height:200}}><TextReveal text={shot.title} fontSize={Math.min(76,1400/shot.title.length)} initialScale={1.04} color="#f4f1df" letterSpacing="0"/></div>:shot.title}</div>
   {project.template==='application'&&<div style={{position:'absolute',left:90,top:790,border:'1px solid #b7c6a3',borderRadius:24,padding:'18px 30px',fontSize:30,opacity:visible}}>Présentation · {m?'Capture personnelle':'Maquette illustrative'}</div>}
   <div style={{position:'absolute',left:90,right:90,bottom:185,fontSize:24}}>{m?(m.label||'Média personnel importé'):'Démo · Illustrations originales de substitution'}</div>
  </AbsoluteFill>;

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {serveProduction} from './pipeline/downloads.mjs';
 import {readFile,writeFile,mkdir,unlink,stat} from 'node:fs/promises';
 import {createWriteStream,createReadStream} from 'node:fs';
 import {pipeline} from 'node:stream/promises';
@@ -15,6 +16,7 @@ const server=http.createServer(async(req,res)=>{
  try{
   if(req.headers.origin&&req.headers.origin!==`http://${req.headers.host}`)return json(res,403,{error:'Origine refusée'});
   const url=new URL(req.url,'http://localhost');
+  if(await serveProduction(req,res,url))return;
   if(req.method==='GET'&&url.pathname==='/'){res.writeHead(200,{'content-type':'text/html; charset=utf-8'});return res.end(await readFile(path.join(root,'editor/index.html')));}
   if(req.method==='POST'&&url.pathname==='/api/import'){
    if(importing)throw new Error('Un import est déjà en cours.');importing=true;let file;

@@ -10,3 +10,18 @@ __pycache__/
 .npm-cache/
 .pip-cache/
 .DS_Store
+# Untracked rushes and voice files require explicit publication authorization
+*.mp4
+*.mov
+*.m4v
+*.webm
+*.mkv
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.opus
+*.private.json
+*.local.json

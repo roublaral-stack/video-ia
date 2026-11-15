@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "subject": "Présentation de Plantes & Bulles",
+  "template": "application",
+  "duration": 30,
+  "demo": false,
+  "media": [],
+  "narration": {"engine": "files", "audio": "../private/narration.wav", "srt": "../private/narration.srt"},
+  "brag": {"mode": "files", "files": ["../private/brag-output/brag.mp4"]}
+}

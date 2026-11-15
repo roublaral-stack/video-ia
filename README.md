@@ -4,6 +4,98 @@ Premier Reel de démonstration : **15 s · 1080 × 1920 · 30 fps · 450 images*
 
 Le projet est isolé dans `reel/`. Aucun fichier des projets Brag ou Voix off n'est utilisé ou modifié.
 
+## Chaîne de production automatisée
+
+Une commande réutilise le générateur existant :
+
+```bash
+cd /workspace/video-ia/reel
+npm run produce -- pipeline-config/demo.json --dry-run
+npm run produce -- pipeline-config/demo.json
+```
+
+La configuration fournit le sujet, le modèle (`educatif`, `vlog`, `application`), la durée (15/30/60 s), les chemins des photos/vidéos et les paramètres de narration. Les chemins sont relatifs au JSON. Pour un vrai projet, copier un exemple dans `reel/private/ma-production.json` et y renseigner ses fichiers ; ce dossier est ignoré par Git. Les exemples avec chemins `../private/...` sont des emplacements à compléter, pas des fichiers supposés existants.
+
+Étapes : **script → médias → voix → sous-titres → storyboard/scènes → Remotion/SnapCN → vérification → ZIP privé**. Le texte par défaut est préparé par des modèles déterministes, sans API LLM et sans recherche scientifique implicite. Fournir `narration.text` pour un script éditorial précis. Le sujet est repris dans un texte court, posé et neutre. Le plan décrit cette origine ; les scènes et leurs durées utilisent le `buildTimeline` existant. Les titres de production utilisent le vrai composant SnapCN `TextReveal` ; les anciens projets gardent leur animation par défaut.
+
+### Intégrations réellement disponibles
+
+| Module | Opérationnel ici | Limite |
+|---|---|---|
+| Remotion / SnapCN / Chromium | Oui, montage et MP4 vertical réel | Aucun téléchargement de navigateur nécessaire |
+| Voix synthétique de démo | Oui, eSpeak-NG local français | Démo robotique, pas Chatterbox ni la voix de Corentin |
+| Chatterbox | Dépôt/API audités, pont Python fourni | Runtime/poids absents, Hugging Face refusé par le proxy ; inférence non testée |
+| Voix off par fichiers | Oui, audio + SRT importés | Le SRT importé reste à vérifier contre les paroles ; pas de forced alignment/ASR |
+| Brag | Exports importables pour `application` uniquement | Skill Hyperframes, pas d'API de scènes documentée ; création du film Brag manuelle |
+
+L'audit, les URL exactes et les commits amont sont dans [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Aucun dépôt Brag ou Chatterbox n'est modifié.
+
+Configurations disponibles dans `reel/pipeline-config/` :
+
+- `demo.json` : photos/vidéo et voix entièrement synthétiques, produits localement ; aucun rush personnel.
+- `files.example.json` : narration et SRT exportés depuis le projet Voix off.
+- `chatterbox.example.json` : activation conditionnelle du pont avec un Python déjà équipé. Pas d'installation automatique ni de modèle prétendument présent.
+- `application-brag.example.json` : captures/MP4 Brag, facultatifs et réservés au modèle application. Brag n'intervient jamais dans un Reel éducatif ou Vlog.
+
+### Alignement de la narration
+
+La synthèse est effectuée **phrase par phrase**. Les WAV sont normalisés à 48 kHz ; leurs nombres d'échantillons déterminent les horodatages SRT, les silences et le WAV final. Cela donne un calage réel par phrase, pas un répartiteur arbitraire du texte dans la durée. Aucun alignement mot à mot ni vérification perceptive de la voix n'est revendiqué. Le rapport conserve la méthode utilisée.
+
+La narration n'est pas coupée pour rentrer de force : si elle dépasse la durée disponible, le pipeline s'arrête avec un diagnostic. Réduire le texte, changer la durée ou ajuster les réglages de synthèse disponibles. `speed` règle seulement la voix de démo ; Chatterbox utilise ses paramètres vérifiés. Les WAV/SRT importés doivent rester dans la durée du Reel ; leur alignement lexical est sous la responsabilité de l'export source.
+
+### Reprise et absence de doublons
+
+Chaque production est enregistrée dans `reel/pipeline-runs/IDENTIFIANT/` :
+
+- identifiant calculé sur la configuration, le contenu des entrées et le code/dépendances de la chaîne ;
+- `state.json` atomique avec l'étape, ses tentatives et les empreintes des sorties ;
+- verrou par processus pour empêcher deux exécutions simultanées ; récupération d'un verrou dont le processus est mort ;
+- réutilisation des étapes terminées si leurs sorties sont intactes ; invalidation à partir d'une sortie absente/corrompue ;
+- changement de configuration, d'entrée ou de code = nouvelle production, pour ne pas réutiliser un rendu incompatible.
+
+Après interruption ou erreur, relancer **la même commande avec la même configuration**. Pour repartir explicitement d'une étape :
+
+```bash
+npm run produce -- private/ma-production.json --from render
+```
+
+Étapes reconnues : `plan`, `media`, `voice`, `captions`, `scenes`, `render`, `verify`, `archive`. Si un verrou est incomplet, le diagnostic demande de vérifier les processus avant toute suppression manuelle. Le dry-run lit et valide les entrées, calcule l'identifiant et affiche les étapes, mais ne crée aucune production, ne synthétise rien et ne télécharge aucun modèle.
+
+Une injection de panne sert uniquement aux tests :
+
+```bash
+npm run produce -- pipeline-config/demo.json --fail-once captions
+# Échec volontaire ; cette commande reprend sans refaire les étapes intactes :
+npm run produce -- pipeline-config/demo.json
+```
+
+L'injection ne se produit qu'une fois pour cet identifiant. Une nouvelle exécution normale d'une production déjà terminée ne refait pas le rendu. `--from archive` permet de régénérer seulement l'archive et ses liens.
+
+### Récupérer les fichiers privés
+
+La commande affiche les chemins de `final.mp4`, `sources.zip`, `verification.json` et la page `/production/IDENTIFIANT`. Démarrer `npm run editor` puis ouvrir cette page **sur la machine cloud** : elle propose les téléchargements MP4 et ZIP. Les téléchargements exigent un jeton local, renvoient `Content-Disposition: attachment`, et ne sont pas mis en cache. Le service écoute seulement sur 127.0.0.1 ; aucune publication Internet n'est effectuée.
+
+Le ZIP contient le projet rééditable, les médias normalisés, la narration du montage, le script, le storyboard, le SRT et le rapport. Il n'inclut ni échantillon de référence, poids de modèle, environnement, exécutable ou secret. C'est une archive locale privée, pas un ZIP chiffré. La restauration `npm run project -- restore ...` restaure le projet et ses médias ; les documents `production/` restent consultables dans le ZIP.
+
+Sur iPhone, joindre les fichiers à Codex et demander la production. Demander ensuite à Codex les pièces jointes MP4/ZIP si l'interface le permet. Le serveur localhost n'est pas directement accessible depuis l'iPhone ; aucun lien public de release n'est créé sans autorisation. Les fichiers restent récupérables dans le workspace ou via la page cloud autorisée. Les liens locaux et ZIP ont été testés par HTTP, pas sur un iPhone physique.
+
+Exemple de demande : **« Dans VIDEO IA, fais un Reel éducatif de 30 secondes sur mes plantes avec ces photos. Utilise cet audio et son SRT, puis donne-moi le MP4 et le ZIP privés. »**
+
+### Confidentialité et validation
+
+Aucun rush, WAV, échantillon, transcript de production, configuration privée ou ZIP n'est ajouté à Git automatiquement. `pipeline-runs/`, `private/`, `projects/`, `public/uploads/`, `voice-samples/`, les nouveaux fichiers audio/vidéo et les fichiers `*.private.json`/`*.local.json` sont ignorés. Les anciennes démos silencieuses déjà versionnées sont conservées. Le pipeline ne contient aucune commande de commit, push, upload ou publication.
+
+Les vérifications contrôlent H.264, 1080 × 1920, 30 fps, durée et images attendues, piste AAC, décodage complet, niveau audio non nul, décalage entre l'audio source et l'audio du MP4, concordance SRT/montage et présence de signal sur chaque plage sous-titrée. Elles ne remplacent pas une écoute éditoriale ou une reconnaissance des mots prononcés.
+
+`npm test` conserve les tests antérieurs et ajoute le dry-run, les configurations des adaptateurs, les verrous, une panne suivie de reprise, un nouvel appel sans réexport, une corruption ZIP réparée sans refaire la voix/le MP4, la restauration et les téléchargements privés. Les fixtures sont toutes synthétiques.
+
+
+### Résultats de cette évolution
+
+Suite complète : **26 tests réussis, aucun échec ni test ignoré**, complétée par les contrôles ciblés des adaptateurs Brag. TypeScript valide. La démo de production de 15 s a été exportée en 1080 × 1920 à 30 fps (450 images), H.264 avec piste AAC, puis décodée entièrement. Le signal audio est non nul ; son début détecté est identique dans la source et le MP4 (0,50 s). Les quatre sous-titres suivent les frontières des phrases synthétisées. Des images représentatives ont été inspectées.
+
+Échec injecté avant `captions`, puis reprise : une seule exécution de `plan`, `media`, `voice` et `render`, deux tentatives de `captions`. Le test répare aussi un ZIP corrompu sans refaire le MP4, restaure son projet et vérifie les téléchargements MP4/ZIP par leurs empreintes. Aucun enregistrement personnel n'a servi à ces essais. La voix Chatterbox reste non testée en inférence : le pont retourne explicitement l'absence de son runtime.
+
 ## Générateur de Reels réutilisable
 
 La composition originale **PlantesBulles** est conservée. **ReelGenerator** est la nouvelle composition pilotée par un projet JSON. Elle accepte :

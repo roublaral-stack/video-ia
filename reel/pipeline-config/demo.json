@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "subject": "un aquarium vivant",
+  "template": "educatif",
+  "duration": 15,
+  "demo": true,
+  "media": [],
+  "narration": {"engine": "demo", "voice": "fr-fr", "speed": 145},
+  "brag": {"mode": "off", "files": []}
+}

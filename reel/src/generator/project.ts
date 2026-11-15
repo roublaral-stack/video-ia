@@ -5,6 +5,7 @@ export const projectSchema=z.object({
   subject:z.string().trim().min(1).max(120),
   template:z.enum(['educatif','vlog','application']),
   duration:z.union([z.literal(15),z.literal(30),z.literal(60)]),
+  titleAnimation:z.enum(['simple','snapcn']).default('simple'),
   titles:z.array(z.string().trim().min(1).max(90)).max(30).default([]),
   media:z.array(z.object({src:localSource,type:z.enum(['image','video']),durationSeconds:z.number().positive().max(86400).optional(),trimStart:z.number().min(0).default(0),fit:z.enum(['cover','contain']).default('cover'),label:z.string().max(100).default('')})).max(30).default([]),
   captions:z.array(z.object({start:z.number().min(0),end:z.number().positive(),text:z.string().trim().min(1).max(160)})).max(500).default([]),
@@ -38,7 +39,7 @@ export function buildTimeline(project:Project,fps=30):Shot[]{
 // Outgoing titles finish before the incoming title appears during a dissolve.
 export function titleVisibility(frame:number,duration:number,guard=15){return Math.max(0,Math.min(1,(frame-guard)/10,(duration-guard-frame)/10));}
 export function parseSrt(text:string){
- const stamp=(s:string)=>{const m=/^(\d{2}):(\d{2}):(\d{2})[,.](\d{3})$/.exec(s);if(!m||+m[2]>59||+m[3]>59)throw new Error('Horodatage SRT invalide');return +m[1]*3600 + +m[2]*60 + +m[3]+ +m[4]/1000;};
+ const stamp=(s:string)=>{const m=/^(\d{2}):(\d{2}):(\d{2})[,.](\d{3})$/.exec(s);if(!m||+m[2]>59||+m[3]>59)throw new Error('Horodatage SRT invalide');return (+m[1]*3600000 + +m[2]*60000 + +m[3]*1000 + +m[4])/1000;};
  return text.replace(/^\uFEFF/,'').trim().split(/\r?\n\s*\r?\n/).filter(Boolean).map(block=>{const lines=block.split(/\r?\n/);if(/^\d+$/.test(lines[0]))lines.shift();const parts=lines.shift()?.split(/\s+-->\s+/);if(!parts||parts.length!==2)throw new Error('Bloc SRT invalide');return {start:stamp(parts[0]),end:stamp(parts[1]),text:lines.join(' ').replace(/<[^>]*>/g,'')};});
 }
 // Provisional timing from written copy; the user must align it with actual speech.

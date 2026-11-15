@@ -10,3 +10,7 @@ __pycache__/
 # Personal projects and media stay local unless deliberately archived
 public/uploads/
 projects/
+# Private production artifacts: never publish implicitly
+pipeline-runs/
+private/
+voice-samples/
