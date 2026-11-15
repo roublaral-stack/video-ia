@@ -1,14 +1,24 @@
 {
   "version": 1,
+  "mode": "production",
   "subject": "Mon aquarium",
   "template": "educatif",
   "duration": 30,
+  "visualStyle": "cinematic",
+  "captionStyle": "editorial",
   "demo": false,
   "media": ["../private/photo.jpg", "../private/plan.mov"],
   "narration": {
     "engine": "files",
     "audio": "../private/narration.wav",
-    "srt": "../private/narration.srt"
+    "srt": "../private/narration.srt",
+    "origin": "chatterbox-export",
+    "alignment": {"mode": "acoustic", "model": "../.alignment/fr", "python": "../.venv/bin/python"}
+  },
+  "creative": {
+    "hook": "Un détail à observer.",
+    "intention": "Remplacer cette accroche par un détail effectivement visible dans les rushs. Cuts sur les groupes parlés, zooms de 3,5 % maximum par défaut.",
+    "limitations": []
   },
   "brag": {"mode": "off", "files": []}
 }

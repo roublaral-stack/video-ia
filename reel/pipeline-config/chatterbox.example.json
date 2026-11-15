@@ -1,15 +1,19 @@
 {
   "version": 1,
+  "mode": "production",
   "subject": "Mes plantes tropicales",
   "template": "vlog",
   "duration": 30,
   "demo": false,
-  "media": [],
+  "visualStyle": "cinematic",
+  "media": ["../private/plan-reel.mp4"],
   "narration": {
     "engine": "chatterbox",
-    "python": "python3",
+    "python": "../private/runtime-chatterbox/bin/python",
+    "referenceAudio": "../private/reference.wav",
+    "modelDirectory": "../private/poids-chatterbox",
     "device": "cpu",
-    "text": "Prenons le temps de regarder les feuilles.\nChaque image garde un petit détail.\nVoilà un moment avec Plantes et Bulles.",
+    "text": "Remplacer par un script validé,\nen groupes oraux courts,\nqui décrivent les images disponibles.",
     "exaggeration": 0.5,
     "cfgWeight": 0.5
   },

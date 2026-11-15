@@ -1,10 +1,10 @@
-import {Composition, continueRender, delayRender, staticFile, type CalculateMetadataFunction} from 'remotion';
+import {Composition, continueRender, delayRender, staticFile, cancelRender, type CalculateMetadataFunction} from 'remotion';
 import {Reel} from './Reel';
 import {Generator} from './generator/Generator';
 import {exampleProject,projectSchema,type Project} from './generator/project';
 const handle=delayRender('Load bundled font');
-const font=new FontFace('DemoSans',`url(${staticFile('fonts/DejaVuSans.ttf')})`);
-font.load().then(f=>{document.fonts.add(f);continueRender(handle);}).catch(e=>{throw e;});
+const fonts=[new FontFace('DemoSans',`url(${staticFile('fonts/DejaVuSans.ttf')})`),new FontFace('EditorialSerif',`url(${staticFile('fonts/DejaVuSerif.ttf')})`)];
+Promise.all(fonts.map(f=>f.load())).then(loaded=>{loaded.forEach(f=>document.fonts.add(f));continueRender(handle);}).catch(cancelRender);
 const metadata:CalculateMetadataFunction<{project:Project}>=({props})=>{
  const project=projectSchema.parse(props.project);
  return {durationInFrames:project.duration*30,props:{project}};

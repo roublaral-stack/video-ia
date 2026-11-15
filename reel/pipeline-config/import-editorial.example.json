@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "mode": "production",
+  "subject": "Le plaisir\nd’observer.",
+  "template": "educatif",
+  "duration": 15,
+  "visualStyle": "typography",
+  "captionStyle": "editorial",
+  "demo": false,
+  "media": [],
+  "narration": {
+    "engine": "files",
+    "origin": "chatterbox-export",
+    "audio": "../private/narration.wav",
+    "srt": "../private/narration.srt",
+    "alignment": {
+      "mode": "acoustic",
+      "model": "../.alignment/fr",
+      "python": "../.venv/bin/python"
+    }
+  },
+  "brag": {"mode": "off", "files": []}
+}

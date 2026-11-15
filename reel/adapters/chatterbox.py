@@ -11,7 +11,9 @@ try:
  from chatterbox.mtl_tts import ChatterboxMultilingualTTS
 except ImportError as error:
  raise SystemExit('Chatterbox runtime absent in this interpreter: '+str(error))
-model=ChatterboxMultilingualTTS.from_pretrained(device=request.get('device','cpu'),t3_model='v3')
+if not request.get('modelDirectory') or not request.get('referenceAudio'):
+ raise SystemExit('Runtime personnalisé non configuré : poids locaux et référence vocale requis ; aucun modèle/voix générique chargé.')
+model=ChatterboxMultilingualTTS.from_local(request['modelDirectory'],device=request.get('device','cpu'),t3_model='v3')
 segments=[]
 for index,text in enumerate(request['parts']):
  kwargs={'language_id':'fr','exaggeration':request.get('exaggeration',.5),'cfg_weight':request.get('cfgWeight',.5)}

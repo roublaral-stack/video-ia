@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/synesthesiam/fr_pocketsphinx-cmu.git",
+  "commit": "b41b212857ad7afe1b2efa8aee8dae580ebb9c34",
+  "model": "cmusphinx-fr-5.2",
+  "sha256": {
+    "acoustic_model/feature_transform": "c20b2a4b36c6e232ea90d3c7788f1c076de2e2fb6c8c13a1e345a59b71fa3033",
+    "acoustic_model/mdef": "93bbae9f2c3ea724d7b200ee9dcbc404c0d6375cdf3b2950cdc6f5f81c4c0759",
+    "acoustic_model/means": "a4999995c08218de512fc0580b567bc819ece0f859b15537e66386655ab1ccb8",
+    "acoustic_model/transition_matrices": "23db4d08509bd0d13836933869b58a010772cc1bf753b2b22ad686ad6e9e9175",
+    "acoustic_model/feat.params": "44ec61d22acd9e9ba8f49fee48800a06da5139d92d3491a35d0660d8a4349838",
+    "acoustic_model/variances": "ca4ffa8f0f9f94fb9137bd74a660b5ab94c71aa33465759953b774a4a02f15ff",
+    "acoustic_model/README": "9040c77b7afcc11a51c824a59859aca598562cd1cdb52998d6404fbda32f1c76",
+    "acoustic_model/LICENSE": "9325b9a7e4605f5752d17c36ac2753dc226d0c9f75cfddd4aa0d0417b0af52f2",
+    "acoustic_model/noisedict": "af281d8c53f0a24ace7193e014dcb876e4e517f96b34791d5cd3e71fc69fc83b",
+    "acoustic_model/mixture_weights": "c59e1d4c1d4ccebacfd9d0e265b666ac0c796229a9fb8de6802be2bc0f1e6eda",
+    "dictionary.dict": "8a9d262d4d0baea1280cf92dba3308493c90d08057d5363f8b2fda4c122e31c1"
+  }
+}

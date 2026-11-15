@@ -1,5 +1,6 @@
-import {readFile,writeFile,mkdir,access} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,access,unlink} from 'node:fs/promises';
 import path from 'node:path';
+import {assertApproval} from './pipeline/review.mjs';
 import {spawn} from 'node:child_process';
 import {projectSchema,buildTimeline,exampleProject,parseSrt,makeCaptions} from '../src/generator/project.ts';
 import {root,importMedia,probe,command} from './media.mjs';
@@ -13,13 +14,22 @@ export async function validateAssets(project){
  }
  return p;
 }
-export async function renderProject(file,output){
+export async function renderProject(file,output,{scale=1,approvalFile}={}){
  const input=JSON.parse(await readFile(file,'utf8'));const project=await validateAssets(input.project??input);
+ if(project.requiresCreativeApproval&&scale>=1)await assertApproval(path.resolve(file),approvalFile);
  const {randomUUID}=await import('node:crypto');await mkdir(path.join(root,'projects'),{recursive:true});
  const props=path.join(root,'projects',`render-${randomUUID()}.json`);await writeFile(props,JSON.stringify({project},null,2));
  const out=path.resolve(output);await mkdir(path.dirname(out),{recursive:true});
+ const nativeOut=project.audio?.preserveSource?out+'.remotion.mp4':out;
  const browser=process.env.REMOTION_BROWSER_EXECUTABLE||'/usr/bin/chromium';await access(browser);
- return new Promise((resolve,reject)=>{const p=spawn(process.execPath,[path.join(root,'node_modules/@remotion/cli/remotion-cli.js'),'render','src/index.ts','ReelGenerator',out,`--props=${props}`,`--browser-executable=${browser}`,'--concurrency=2','--is-production=false'],{cwd:root,stdio:'inherit'});p.on('error',reject);p.on('close',code=>code===0?resolve(out):reject(new Error(`Rendu échoué (${code})`)));});
+ await new Promise((resolve,reject)=>{const p=spawn(process.execPath,[path.join(root,'node_modules/@remotion/cli/remotion-cli.js'),'render','src/index.ts','ReelGenerator',nativeOut,`--props=${props}`,`--browser-executable=${browser}`,'--concurrency=2',`--scale=${scale}`,'--is-production=false'],{cwd:root,stdio:'inherit'});p.on('error',reject);p.on('close',code=>code===0?resolve(out):reject(new Error(`Rendu échoué (${code})`)));});
+ if(project.audio?.preserveSource){
+  // Copy Remotion's video stream, encode the protected input voice directly.
+  // No mixer, fades, volume filter, trim, time stretch or loop on this path.
+  await command('ffmpeg',['-v','error','-y','-i',nativeOut,'-i',path.join(root,'public',project.audio.src),'-map','0:v:0','-map','1:a:0','-c:v','copy','-c:a','aac','-b:a','256k','-ar','48000','-map_metadata','-1','-movflags','+faststart',out]);
+  await unlink(nativeOut);
+ }
+ return out;
 }
 async function main(){
  const [cmd,...args]=process.argv.slice(2);

@@ -1,5 +1,8 @@
 import React from 'react';
 import {AbsoluteFill, Img, Loop, OffthreadVideo, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
+import {Cinematic} from './Cinematic';
+import {Editorial} from './Editorial';
+import {ModernCaptions} from './ModernCaptions';
 import {Audio} from '@remotion/media';
 import {TransitionSeries,linearTiming} from '@remotion/transitions';
 import {fade} from '@remotion/transitions/fade';
@@ -20,17 +23,22 @@ const ShotView=({shot,project}:{shot:Shot;project:Project})=>{
 };
 const Captions=({project}:{project:Project})=>{
  const f=useCurrentFrame();const {fps}=useVideoConfig();const time=f/fps-project.captionOffset;
+ if(project.captionStyle==='editorial')return <ModernCaptions project={project}/>;
  const cue=project.captions.find(c=>time>=c.start&&time<c.end);
  return cue?<div data-testid="caption" style={{position:'absolute',left:90,right:90,bottom:320,textAlign:'center',fontSize:46,lineHeight:1.25,color:'#fffcec',fontFamily:'DemoSans',background:'rgba(5,24,22,.85)',borderRadius:18,padding:'20px 28px',overflowWrap:'anywhere'}}>{cue.text}</div>:null;
 };
 const Soundtrack=({project}:{project:Project})=>{
  const {fps,durationInFrames}=useVideoConfig();const a=project.audio;if(!a)return null;
+ if(a.preserveSource)return <Sequence name="Voix originale protégée" from={0} durationInFrames={durationInFrames}><Audio src={staticFile(a.src)} volume={1} durationInFrames={durationInFrames}/></Sequence>;
  const length=Math.max(1,Math.floor((a.durationSeconds-a.trimStart)*fps));
  const sound=<Audio src={staticFile(a.src)} trimBefore={Math.round(a.trimStart*fps)} durationInFrames={length} volume={f=>a.volume*Math.min(1,f/12,Math.max(0,(durationInFrames-Math.round(a.from*fps)-f)/18))}/>;
  return <Sequence name="Piste audio" from={Math.round(a.from*fps)} durationInFrames={durationInFrames-Math.round(a.from*fps)}>{a.loop?<Loop durationInFrames={length}>{sound}</Loop>:sound}</Sequence>;
 };
 export const Generator=({project}:{project:Project})=>{
  const {fps}=useVideoConfig();const shots=buildTimeline(project,fps);
+ if(project.productionMode==='production'&&!project.media.length&&project.visualStyle!=='typography'&&!project.allowIllustrations)throw new Error('Médias réels manquants, production bloquée.');
+ if(project.visualStyle==='cinematic')return <AbsoluteFill><Cinematic project={project}/><Soundtrack project={project}/></AbsoluteFill>;
+ if(project.visualStyle==='typography')return <AbsoluteFill><Editorial project={project}/><Soundtrack project={project}/></AbsoluteFill>;
  return <AbsoluteFill>
   <TransitionSeries>{shots.flatMap(shot=>[
    ...(shot.overlap?[<TransitionSeries.Transition key={`t${shot.index}`} presentation={fade()} timing={linearTiming({durationInFrames:shot.overlap})}/>]:[]),

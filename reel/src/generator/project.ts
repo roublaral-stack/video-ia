@@ -6,11 +6,16 @@ export const projectSchema=z.object({
   template:z.enum(['educatif','vlog','application']),
   duration:z.union([z.literal(15),z.literal(30),z.literal(60)]),
   titleAnimation:z.enum(['simple','snapcn']).default('simple'),
+  visualStyle:z.enum(['nature','typography','cinematic']).default('nature'),
+  productionMode:z.enum(['legacy','demo','production']).default('legacy'),
+  allowIllustrations:z.boolean().default(false),requiresCreativeApproval:z.boolean().default(false),
+  montage:z.object({hook:z.string().max(72),shots:z.array(z.object({start:z.number().min(0),end:z.number().positive(),mediaIndex:z.number().int().min(0),focusX:z.number().min(0).max(1),focusY:z.number().min(0).max(1),zoomFrom:z.number().min(1).max(1.08),zoomTo:z.number().min(1).max(1.08),transition:z.enum(['cut','fade'])})).max(30)}).optional(),
+  captionStyle:z.enum(['classic','editorial']).default('classic'),
   titles:z.array(z.string().trim().min(1).max(90)).max(30).default([]),
   media:z.array(z.object({src:localSource,type:z.enum(['image','video']),durationSeconds:z.number().positive().max(86400).optional(),trimStart:z.number().min(0).default(0),fit:z.enum(['cover','contain']).default('cover'),label:z.string().max(100).default('')})).max(30).default([]),
   captions:z.array(z.object({start:z.number().min(0),end:z.number().positive(),text:z.string().trim().min(1).max(160)})).max(500).default([]),
   captionOffset:z.number().min(-60).max(60).default(0),
-  audio:z.object({src:localSource,durationSeconds:z.number().positive(),trimStart:z.number().min(0).default(0),from:z.number().min(0).default(0),volume:z.number().min(0).max(1).default(.6),loop:z.boolean().default(false)}).optional(),
+  audio:z.object({src:localSource,durationSeconds:z.number().positive(),trimStart:z.number().min(0).default(0),from:z.number().min(0).default(0),volume:z.number().min(0).max(1).default(.6),loop:z.boolean().default(false),preserveSource:z.boolean().default(false)}).optional(),
 }).superRefine((p,ctx)=>{
   if(p.media.length>Math.floor(p.duration/2))ctx.addIssue({code:'custom',path:['media'],message:'Prévoir au moins 2 secondes par média ; choisissez une durée plus longue.'});
   for(const [i,m] of p.media.entries())if(m.type==='video'&&(!m.durationSeconds||m.trimStart>=m.durationSeconds))ctx.addIssue({code:'custom',path:['media',i],message:'Durée vidéo ou point de départ invalide.'});
@@ -19,6 +24,7 @@ export const projectSchema=z.object({
     if(c.end<=c.start||c.start<last||c.start+p.captionOffset<0||c.end+p.captionOffset>p.duration)ctx.addIssue({code:'custom',path:['captions',i],message:'Sous-titres ordonnés, sans chevauchement, dans la durée du Reel.'});
     last=c.end;
   }
+  if(p.audio?.preserveSource&&(p.audio.trimStart!==0||p.audio.from!==0||p.audio.volume!==1||p.audio.loop))ctx.addIssue({code:'custom',path:['audio'],message:'Voix protégée : aucun gain, décalage, boucle ou découpe autorisé.'});
   if(p.audio&&(p.audio.trimStart>=p.audio.durationSeconds||p.audio.from>=p.duration))ctx.addIssue({code:'custom',path:['audio'],message:'Point de départ audio hors durée.'});
 });
 export type Project=z.infer<typeof projectSchema>;
@@ -49,3 +55,5 @@ export function makeCaptions(text:string,duration:15|30|60){
  if(lines.length>duration)throw new Error('Texte trop long : prévoyez au moins une seconde par sous-titre.');
  const slot=duration/lines.length;return lines.map((text,i)=>({start:Math.round((i*slot+.15)*1000)/1000,end:Math.round(((i+1)*slot-.15)*1000)/1000,text}));
 }
+
+export type FilmShot=NonNullable<Project['montage']>['shots'][number];

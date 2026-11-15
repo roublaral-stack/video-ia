@@ -14,3 +14,5 @@ projects/
 pipeline-runs/
 private/
 voice-samples/
+# Local acoustic alignment models and tools (no personal audio in source)
+.alignment/

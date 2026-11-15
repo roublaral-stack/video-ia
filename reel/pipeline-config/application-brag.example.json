@@ -1,10 +1,11 @@
 {
   "version": 1,
+  "mode": "production",
   "subject": "Présentation de Plantes & Bulles",
   "template": "application",
   "duration": 30,
   "demo": false,
   "media": [],
-  "narration": {"engine": "files", "audio": "../private/narration.wav", "srt": "../private/narration.srt"},
+  "narration": {"engine": "files", "audio": "../private/narration.wav", "srt": "../private/narration.srt", "alignment": {"mode": "acoustic", "model": "../.alignment/fr", "python": "../.venv/bin/python"}},
   "brag": {"mode": "files", "files": ["../private/brag-output/brag.mp4"]}
 }
